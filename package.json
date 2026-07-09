@@ -2,6 +2,7 @@
   "name": "node-file-processing-pipeline",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "workspaces": [
     "api",
     "worker"
@@ -10,6 +11,10 @@
     "dev:api": "npm run dev --workspace=api",
     "dev:worker": "npm run dev --workspace=worker",
     "start:api": "npm run start --workspace=api",
-    "start:worker": "npm run start --workspace=worker"
+    "start:worker": "npm run start --workspace=worker",
+    "db:migrate": "node --env-file=.env db/migrate.js"
+  },
+  "dependencies": {
+    "pg": "^8.12.0"
   }
 }
