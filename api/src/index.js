@@ -1,5 +1,6 @@
 import express from "express";
 import { filesRouter } from "./routes/files.js";
+import { hooksRouter } from "./routes/hooks.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,6 +12,7 @@ app.get("/health", (req, res) => {
 });
 
 app.use(filesRouter);
+app.use(hooksRouter);
 
 app.listen(port, () => {
   console.log(`api listening on port ${port}`);

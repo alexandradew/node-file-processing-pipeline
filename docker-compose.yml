@@ -33,6 +33,9 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_NOTIFY_WEBHOOK_ENABLE_PRIMARY: "on"
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_PRIMARY: ${MINIO_WEBHOOK_ENDPOINT:-http://host.docker.internal:3000/internal/hooks/minio}
+      MINIO_NOTIFY_WEBHOOK_AUTH_TOKEN_PRIMARY: ${MINIO_WEBHOOK_TOKEN:-dev-webhook-token}
     ports:
       - "9000:9000" # API
       - "9001:9001" # Console web
@@ -53,7 +56,8 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} &&
       mc mb --ignore-existing local/staging &&
-      mc mb --ignore-existing local/files
+      mc mb --ignore-existing local/files &&
+      mc event add local/staging arn:minio:sqs::PRIMARY:webhook --event put --ignore-existing
       "
     restart: "no"
 
