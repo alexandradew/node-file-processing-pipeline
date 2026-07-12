@@ -54,9 +54,10 @@ filesRouter.get("/files/:id/download", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const { rows } = await pool.query("SELECT storage_key, status FROM files WHERE id = $1", [
-      id,
-    ]);
+    const { rows } = await pool.query(
+      "SELECT storage_key, original_filename, status FROM files WHERE id = $1",
+      [id]
+    );
     const file = rows[0];
 
     if (!file || file.status !== "ready") {
@@ -67,7 +68,8 @@ filesRouter.get("/files/:id/download", async (req, res) => {
       s3,
       FILES_BUCKET,
       file.storage_key,
-      DOWNLOAD_URL_EXPIRES_IN_SECONDS
+      DOWNLOAD_URL_EXPIRES_IN_SECONDS,
+      file.original_filename
     );
 
     res.json({ downloadUrl, expiresIn: DOWNLOAD_URL_EXPIRES_IN_SECONDS });
