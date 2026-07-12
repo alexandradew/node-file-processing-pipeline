@@ -1,0 +1,10 @@
+{
+  "name": "queue",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "dependencies": {
+    "redis": "^4.7.0"
+  }
+}
