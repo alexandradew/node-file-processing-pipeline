@@ -1,9 +1,12 @@
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { PENDING_QUEUE } from "queue";
+import { STAGING_BUCKET } from "storage";
 import { createApp } from "../app.js";
 import { pool } from "../db.js";
 import { redisClient } from "../redis.js";
+import { s3 } from "../storage.js";
 
 /* Must listen on the same port MINIO_WEBHOOK_ENDPOINT points to (host.docker.internal:3000)
 to actually receive the callback. Requires Docker Desktop (Windows/Mac), on Linux this
@@ -65,4 +68,8 @@ test("presigned URL flow: create pending file, upload direct to MinIO, webhook m
   assert.ok(queued, "expected a job to be enqueued after upload");
   const job = JSON.parse(queued);
   assert.equal(job.file_id, file.id);
+
+  await s3.send(new DeleteObjectCommand({ Bucket: STAGING_BUCKET, Key: file.staging_key }));
+  await pool.query("DELETE FROM file_events WHERE file_id = $1", [file.id]);
+  await pool.query("DELETE FROM files WHERE id = $1", [file.id]);
 });

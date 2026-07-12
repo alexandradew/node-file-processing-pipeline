@@ -5,12 +5,14 @@ import { createPool } from "./client.js";
 import { IllegalTransitionError, transition } from "./transition.js";
 
 const pool = createPool();
+const insertedFileIds = [];
 
 async function insertTestFile(status = "pending") {
   const { rows } = await pool.query(
     "INSERT INTO files (status, original_filename, staging_key) VALUES ($1, $2, $3) RETURNING id",
     [status, "test.txt", `staging/${randomUUID()}`]
   );
+  insertedFileIds.push(rows[0].id);
   return rows[0].id;
 }
 
@@ -60,5 +62,7 @@ test("transition rejected when current status no longer matches 'from'", async (
 });
 
 after(async () => {
+  await pool.query("DELETE FROM file_events WHERE file_id = ANY($1)", [insertedFileIds]);
+  await pool.query("DELETE FROM files WHERE id = ANY($1)", [insertedFileIds]);
   await pool.end();
 });

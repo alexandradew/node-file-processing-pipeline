@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { createPool } from "db";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -8,12 +8,14 @@ import { processJob } from "./processJob.js";
 
 const pool = createPool();
 const s3 = createS3Client();
+const createdFiles = [];
 
 async function insertUploadedFile(fileId, filename, stagingKey) {
   await pool.query(
     "INSERT INTO files (id, status, original_filename, staging_key) VALUES ($1, 'uploaded', $2, $3)",
     [fileId, filename, stagingKey]
   );
+  createdFiles.push({ fileId, stagingKey });
 }
 
 test("processJob moves a valid file to ready", async () => {
@@ -56,5 +58,12 @@ test("processJob rejects a spoofed extension and marks the file failed", async (
 });
 
 after(async () => {
+  for (const { fileId, stagingKey } of createdFiles) {
+    // harmless if the key was already moved/never existed in one of the two buckets
+    await s3.send(new DeleteObjectCommand({ Bucket: STAGING_BUCKET, Key: stagingKey }));
+    await s3.send(new DeleteObjectCommand({ Bucket: FILES_BUCKET, Key: stagingKey }));
+    await pool.query("DELETE FROM file_events WHERE file_id = $1", [fileId]);
+    await pool.query("DELETE FROM files WHERE id = $1", [fileId]);
+  }
   await pool.end();
 });
