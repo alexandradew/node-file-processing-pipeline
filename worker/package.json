@@ -10,6 +10,7 @@
     "test": "node --env-file=../.env --test"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
     "db": "*",
     "file-type": "^22.0.1",
     "queue": "*",

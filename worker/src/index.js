@@ -8,6 +8,9 @@ import {
   REAP_INTERVAL_MS,
   releaseLease,
 } from "queue";
+import { pool } from "./db.js";
+import { processJob } from "./processJob.js";
+import { s3 } from "./storage.js";
 
 console.log("worker started");
 
@@ -33,8 +36,13 @@ async function loop() {
     if (result) {
       const { raw, job } = result;
       await acquireLease(client, raw);
-      console.log("received job", job);
-      await releaseLease(client, raw);
+      try {
+        await processJob(pool, s3, job);
+        await releaseLease(client, raw);
+      } catch (err) {
+        // don't release: leave the lease to expire so the reaper requeues this job
+        console.error(`job ${job.job_id} failed unexpectedly`, err);
+      }
     }
   }
 }
@@ -59,6 +67,7 @@ async function shutdown() {
   await client.quit();
   await loopPromise;
   await reaperClient.quit();
+  await pool.end();
   process.exit(0);
 }
 
