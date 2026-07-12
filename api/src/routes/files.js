@@ -1,10 +1,16 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
-import { createPresignedUploadUrl, STAGING_BUCKET } from "storage";
+import {
+  createPresignedDownloadUrl,
+  createPresignedUploadUrl,
+  FILES_BUCKET,
+  STAGING_BUCKET,
+} from "storage";
 import { pool } from "../db.js";
 import { s3 } from "../storage.js";
 
 const UPLOAD_URL_EXPIRES_IN_SECONDS = 15 * 60;
+const DOWNLOAD_URL_EXPIRES_IN_SECONDS = 60;
 
 export const filesRouter = Router();
 
@@ -40,6 +46,33 @@ filesRouter.post("/files", async (req, res) => {
     });
   } catch (err) {
     console.error("failed to create file record", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+filesRouter.get("/files/:id/download", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { rows } = await pool.query("SELECT storage_key, status FROM files WHERE id = $1", [
+      id,
+    ]);
+    const file = rows[0];
+
+    if (!file || file.status !== "ready") {
+      return res.status(404).json({ error: "file not found" });
+    }
+
+    const downloadUrl = await createPresignedDownloadUrl(
+      s3,
+      FILES_BUCKET,
+      file.storage_key,
+      DOWNLOAD_URL_EXPIRES_IN_SECONDS
+    );
+
+    res.json({ downloadUrl, expiresIn: DOWNLOAD_URL_EXPIRES_IN_SECONDS });
+  } catch (err) {
+    console.error("failed to create download url", err);
     res.status(500).json({ error: "internal error" });
   }
 });
