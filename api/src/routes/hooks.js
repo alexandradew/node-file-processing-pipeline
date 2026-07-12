@@ -1,7 +1,7 @@
+import { IllegalTransitionError, transition } from "db";
 import express, { Router } from "express";
 import { createJob, enqueue, PENDING_QUEUE } from "queue";
 import { pool } from "../db.js";
-import { IllegalTransitionError, transition } from "../domain/transition.js";
 import { redisClient } from "../redis.js";
 
 export const hooksRouter = Router();

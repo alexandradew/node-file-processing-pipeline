@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, test } from "node:test";
-import { pool } from "../db.js";
+import { createPool } from "./client.js";
 import { IllegalTransitionError, transition } from "./transition.js";
+
+const pool = createPool();
 
 async function insertTestFile(status = "pending") {
   const { rows } = await pool.query(
@@ -25,6 +27,18 @@ test("valid transition updates status and records event", async () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0].from_status, "pending");
   assert.equal(rows[0].to_status, "uploaded");
+});
+
+test("transition stores metadata on the event when provided", async () => {
+  const fileId = await insertTestFile("pending");
+
+  await transition(pool, fileId, "pending", "uploaded", { reason: "test" });
+
+  const { rows } = await pool.query(
+    "SELECT metadata FROM file_events WHERE file_id = $1",
+    [fileId]
+  );
+  assert.deepEqual(rows[0].metadata, { reason: "test" });
 });
 
 test("illegal transition (skipping states) is rejected", async () => {

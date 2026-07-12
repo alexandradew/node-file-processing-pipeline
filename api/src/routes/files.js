@@ -1,9 +1,8 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import { createPresignedUploadUrl, STAGING_BUCKET } from "storage";
 import { pool } from "../db.js";
-import { s3, STAGING_BUCKET } from "../storage.js";
+import { s3 } from "../storage.js";
 
 const UPLOAD_URL_EXPIRES_IN_SECONDS = 15 * 60;
 
@@ -27,10 +26,11 @@ filesRouter.post("/files", async (req, res) => {
       [fileId, filename, mimeType ?? null, sizeBytes ?? null, stagingKey]
     );
 
-    const uploadUrl = await getSignedUrl(
+    const uploadUrl = await createPresignedUploadUrl(
       s3,
-      new PutObjectCommand({ Bucket: STAGING_BUCKET, Key: stagingKey }),
-      { expiresIn: UPLOAD_URL_EXPIRES_IN_SECONDS }
+      STAGING_BUCKET,
+      stagingKey,
+      UPLOAD_URL_EXPIRES_IN_SECONDS
     );
 
     res.status(201).json({

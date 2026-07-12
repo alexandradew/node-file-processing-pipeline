@@ -18,7 +18,7 @@ export class IllegalTransitionError extends Error {
   }
 }
 
-export async function transition(pool, fileId, from, to) {
+export async function transition(pool, fileId, from, to, metadata = null) {
   const allowedTargets = STATE_MACHINE[from];
   if (!allowedTargets || !allowedTargets.includes(to)) {
     throw new IllegalTransitionError(fileId, from, to);
@@ -38,8 +38,8 @@ export async function transition(pool, fileId, from, to) {
     }
 
     await client.query(
-      "INSERT INTO file_events (file_id, from_status, to_status) VALUES ($1, $2, $3)",
-      [fileId, from, to]
+      "INSERT INTO file_events (file_id, from_status, to_status, metadata) VALUES ($1, $2, $3, $4)",
+      [fileId, from, to, metadata === null ? null : JSON.stringify(metadata)]
     );
 
     await client.query("COMMIT");

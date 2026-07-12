@@ -6,7 +6,9 @@
   "workspaces": [
     "api",
     "worker",
-    "packages/queue"
+    "packages/db",
+    "packages/queue",
+    "packages/storage"
   ],
   "scripts": {
     "dev:api": "npm run dev --workspace=api",
