@@ -1,4 +1,11 @@
-import { consume, createRedisClient, PENDING_QUEUE, PROCESSING_QUEUE } from "queue";
+import {
+  acquireLease,
+  consume,
+  createRedisClient,
+  PENDING_QUEUE,
+  PROCESSING_QUEUE,
+  releaseLease,
+} from "queue";
 
 console.log("worker started");
 
@@ -9,15 +16,18 @@ let running = true;
 
 async function loop() {
   while (running) {
-    let job;
+    let result;
     try {
-      job = await consume(client, PENDING_QUEUE, PROCESSING_QUEUE);
+      result = await consume(client, PENDING_QUEUE, PROCESSING_QUEUE);
     } catch (err) {
       if (!running) break; // connection closed during shutdown
       throw err;
     }
-    if (job) {
+    if (result) {
+      const { raw, job } = result;
+      await acquireLease(client, raw);
       console.log("received job", job);
+      await releaseLease(client, raw);
     }
   }
 }
