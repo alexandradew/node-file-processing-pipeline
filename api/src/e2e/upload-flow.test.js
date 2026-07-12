@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
+import { PENDING_QUEUE } from "queue";
 import { createApp } from "../app.js";
 import { pool } from "../db.js";
+import { redisClient } from "../redis.js";
 
 /* Must listen on the same port MINIO_WEBHOOK_ENDPOINT points to (host.docker.internal:3000)
 to actually receive the callback. Requires Docker Desktop (Windows/Mac), on Linux this
@@ -17,11 +19,13 @@ before(async () => {
   await new Promise((resolve) => {
     server = app.listen(PORT, resolve);
   });
+  await redisClient.del(PENDING_QUEUE); // drop leftovers from previous manual/test runs
 });
 
 after(async () => {
   await new Promise((resolve) => server.close(resolve));
   await pool.end();
+  await redisClient.quit();
 });
 
 async function waitForStatus(fileId, expectedStatus, timeoutMs = 8000) {
@@ -56,4 +60,9 @@ test("presigned URL flow: create pending file, upload direct to MinIO, webhook m
 
   const finalStatus = await waitForStatus(file.id, "uploaded");
   assert.equal(finalStatus, "uploaded");
+
+  const queued = await redisClient.rPop(PENDING_QUEUE);
+  assert.ok(queued, "expected a job to be enqueued after upload");
+  const job = JSON.parse(queued);
+  assert.equal(job.file_id, file.id);
 });

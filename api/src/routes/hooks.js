@@ -1,6 +1,8 @@
 import express, { Router } from "express";
+import { createJob, enqueue, PENDING_QUEUE } from "queue";
 import { pool } from "../db.js";
 import { IllegalTransitionError, transition } from "../domain/transition.js";
+import { redisClient } from "../redis.js";
 
 export const hooksRouter = Router();
 
@@ -30,6 +32,8 @@ hooksRouter.post("/internal/hooks/minio", parseAnyBodyAsJson, async (req, res) =
       console.error("failed to mark file as uploaded", err);
       return res.status(500).end();
     }
+
+    await enqueue(redisClient, PENDING_QUEUE, createJob(fileId));
   }
 
   res.status(200).end();
